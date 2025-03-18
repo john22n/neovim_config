@@ -98,14 +98,17 @@ vim.g.have_nerd_font = false
 -- NOTE: You can change these options as you wish!
 --  For more options, you can see `:help option-list`
 
+-- disable the GUI cursor, behave like a block cursor in all modes
+vim.opt.guicursor = ''
+
 -- Make line numbers default
 vim.opt.number = true
 -- You can also add relative line numbers, to help with jumping.
 --  Experiment for yourself to see if you like it!
--- vim.opt.relativenumber = true
+vim.opt.relativenumber = true
 
 -- Enable mouse mode, can be useful for resizing splits for example!
-vim.opt.mouse = 'a'
+--vim.opt.mouse = 'a'
 
 -- Don't show the mode, since it's already in the status line
 vim.opt.showmode = false
@@ -124,6 +127,24 @@ vim.opt.breakindent = true
 -- Save undo history
 vim.opt.undofile = true
 
+-- converts tabs to spaces
+vim.opt.expandtab = true
+
+-- enables smart indentation
+vim.opt.smartindent = true
+
+-- disable line wrapping
+vim.opt.wrap = false
+
+-- sets a custom undo history directory in ~/.vim/undodir
+vim.opt.undodir = os.getenv 'HOME' .. '/.vim/undodir'
+
+-- enables persistant undo so undo history is saved even after closing nvim
+vim.opt.undofile = true
+
+-- enables incremental search so matches are highlighted as you type
+vim.opt.incsearch = true
+
 -- Case-insensitive searching UNLESS \C or one or more capital letters in the search term
 vim.opt.ignorecase = true
 vim.opt.smartcase = true
@@ -132,7 +153,10 @@ vim.opt.smartcase = true
 vim.opt.signcolumn = 'yes'
 
 -- Decrease update time
-vim.opt.updatetime = 250
+vim.opt.updatetime = 50
+
+-- highlight column 80, helful to follow coding styles guides thta limit line length
+vim.opt.colorcolumn = '80'
 
 -- Decrease mapped sequence wait time
 vim.opt.timeoutlen = 300
@@ -159,9 +183,64 @@ vim.opt.scrolloff = 10
 -- [[ Basic Keymaps ]]
 --  See `:help vim.keymap.set()`
 
--- Clear highlights on search when pressing <Esc> in normal mode
+-- opens file explore :Ex
+vim.keymap.set('n', '<leader>pv', vim.cmd.Ex)
+
+-- move selected lines in visual mode
+vim.keymap.set('v', 'J', ":m '>+1<CR>gv=gv")
+vim.keymap.set('v', 'K', ":m '<-2<CR>gv=gv")
+
+-- join lines without moving cursor
+vim.keymap.set('n', 'J', 'mzJ`z')
+
+-- scroll half page down / up, keeping the cursor centered
+vim.keymap.set('n', '<C-d>', '<C-d>zz')
+vim.keymap.set('n', '<C-u>', '<C-u>zz')
+
+-- searches forward/backward while keeping the cursor centered
+vim.keymap.set('n', 'n', 'nzzzv')
+vim.keymap.set('n', 'N', 'Nzzzv')
+
+-- paste over clipboard without losing clipboard contents
+vim.keymap.set('x', '<leader>p', [["_dP]])
+
+-- yank to system clipboard( + register)
+vim.keymap.set({ 'n', 'v' }, '<leader>y', [["+y]])
+vim.keymap.set('n', '<leader>Y', [["+Y]])
+
+-- delete text without affecting clipboard(_ register)
+vim.keymap.set({ 'n', 'v' }, '<leader>d', [["_d]])
+
+--behaves  exactly like <Esc> preventing weird insert mode behavior
+vim.keymap.set('i', '<C-c>', '<Esc>')
+
+-- disables Q (which enters Ex mode, rarely useful)
+vim.keymap.set('n', 'Q', '<nop>')
 --  See `:help hlsearch`
 vim.keymap.set('n', '<Esc>', '<cmd>nohlsearch<CR>')
+
+-- opens a new tmux window with tmux-sessionizer (if using tmux)
+vim.keymap.set('n', '<C-f', '<cmd>silent !tmux neww tmux-sessionizer<CR>')
+
+-- formats the current buffer using lsp
+vim.keymap.set('n', '<leader>f', vim.lsp.buf.format)
+
+-- make the current file executable
+vim.keymap.set('n', '<leader>x', '<cmd>!chmod +x %<CR>', { silent = true })
+
+-- search and replace the word under the cursor ( with confirmation)
+vim.keymap.set('n', '<leader>s', [[:%s/\<<C-r><C-w>\><C-r><C-w>/gI<Left><Left><Left>]])
+
+--opens nvim plugin config file
+vim.keymap.set('n', '<leader>vpp', '<cmd>e $MYVIMRC<CR>', { noremap = true, silent = true })
+
+-- tab shift to move text to the left
+vim.keymap.set('n', '<S-Tab>', '<<', { noremap = true, silent = true })
+vim.keymap.set('v', '<S-Tab>', '<gv', { noremap = true, silent = true })
+
+--tab to the right
+vim.keymap.set('v', '<Tab>', '>gv', { noremap = true, silent = true })
+vim.keymap.set('n', '<Tab>', '>>', { noremap = true, silent = true })
 
 -- Diagnostic keymaps
 vim.keymap.set('n', '<leader>q', vim.diagnostic.setloclist, { desc = 'Open diagnostic [Q]uickfix list' })
@@ -421,7 +500,7 @@ require('lazy').setup({
       vim.keymap.set('n', '<leader>sd', builtin.diagnostics, { desc = '[S]earch [D]iagnostics' })
       vim.keymap.set('n', '<leader>sr', builtin.resume, { desc = '[S]earch [R]esume' })
       vim.keymap.set('n', '<leader>s.', builtin.oldfiles, { desc = '[S]earch Recent Files ("." for repeat)' })
-      vim.keymap.set('n', '<leader><leader>', builtin.buffers, { desc = '[ ] Find existing buffers' })
+      vim.keymap.set('n', '<leader>ff', builtin.buffers, { desc = '[ ] Find existing buffers' })
 
       -- Slightly advanced example of overriding default behavior and theme
       vim.keymap.set('n', '<leader>/', function()
