@@ -91,7 +91,7 @@ vim.g.mapleader = ' '
 vim.g.maplocalleader = ' '
 
 -- Set to true if you have a Nerd Font installed and selected in the terminal
-vim.g.have_nerd_font = false
+vim.g.have_nerd_font = true
 
 -- [[ Setting options ]]
 -- See `:help vim.opt`
@@ -358,6 +358,31 @@ require('lazy').setup({
   -- Then, because we use the `opts` key (recommended), the configuration runs
   -- after the plugin has been loaded as `require(MODULE).setup(opts)`.
 
+  -- prettier config
+  {
+    "stevearc/conform.nvim",
+    event = { "BufWritePre" },
+    config = function()
+      require("conform").setup({
+        format_on_save = {
+          lsp_fallback = true,
+          timeout_ms = 500,
+        },
+        formatters_by_ft = {
+          javascript = { "prettier" },
+          typescript = { "prettier" },
+          javascriptreact = { "prettier" },
+          typescriptreact = { "prettier" },
+          json = { "prettier" },
+          html = { "prettier" },
+          css = { "prettier" },
+          yaml = { "prettier" },
+          markdown = { "prettier" },
+        },
+      })
+      end
+  },
+
   { -- Useful plugin to show you pending keybinds.
     'folke/which-key.nvim',
     event = 'VimEnter', -- Sets the loading event to 'VimEnter'
@@ -547,14 +572,68 @@ require('lazy').setup({
       -- Automatically install LSPs and related tools to stdpath for Neovim
       -- Mason must be loaded before its dependents so we need to set it up here.
       -- NOTE: `opts = {}` is the same as calling `require('mason').setup({})`
-      { 'williamboman/mason.nvim', opts = {} },
-      'williamboman/mason-lspconfig.nvim',
+      { 'williamboman/mason.nvim',
+        build = ":MasonUpdate",
+        config = function()
+          require("mason").setup()
+        end
+      },
+      {
+        'williamboman/mason-lspconfig.nvim',
+        dependencies = { "williamboman/mason.nvim" },
+        config = function()
+          local servers = {
+            bashls = {},
+            clangd = {},
+            gopls = {},
+            pyright = {
+              settings = {
+                python = {
+                  analysis = {
+                    autoSearchPaths = true,
+                    useLibraryCodeForTypes = true,
+                    diagnosticMode = 'workspace',
+                  },
+                },
+              },
+            },
+            rust_analyzer = {},
+            ts_ls = {},
+            lua_ls = {
+              settings = {
+                Lua = {
+                  completion = { callSnippet = 'Replace' },
+                },
+              },
+            },
+          }
+          local capabilities = vim.lsp.protocol.make_client_capabilities()
+          capabilities = vim.tbl_deep_extend('force', capabilities, require('cmp_nvim_lsp').default_capabilities())
+
+          local ensure_installed = vim.tbl_keys(servers)
+          vim.list_extend(ensure_installed, { 'stylua' })
+
+          require('mason-tool-installer').setup {
+            ensure_installed = ensure_installed,
+          }
+
+          require('mason-lspconfig').setup {
+            ensure_installed = ensure_installed,
+          }
+
+          local lspconfig = require('lspconfig')
+          require('mason-lspconfig').setup_handlers {
+            function(server_name)
+              local opts = servers[server_name] or {}
+              opts.capabilities = vim.tbl_deep_extend('force', {}, capabilities, opts.capabilities or {})
+              lspconfig[server_name].setup(opts)
+            end,
+          }
+        end,
+      },
+      -- Other dependencies...
       'WhoIsSethDaniel/mason-tool-installer.nvim',
-
-      -- Useful status updates for LSP.
       { 'j-hui/fidget.nvim', opts = {} },
-
-      -- Allows extra capabilities provided by nvim-cmp
       'hrsh7th/cmp-nvim-lsp',
     },
     config = function()
@@ -646,7 +725,7 @@ require('lazy').setup({
             if vim.fn.has 'nvim-0.11' == 1 then
               return client:supports_method(method, bufnr)
             else
-              return client.supports_method(method, { bufnr = bufnr })
+              return client.supports_method and client:supports_method(method)
             end
           end
 
@@ -683,9 +762,9 @@ require('lazy').setup({
           -- code, if the language server you are using supports them
           --
           -- This may be unwanted, since they displace some of your code
-          if client and client_supports_method(client, vim.lsp.protocol.Methods.textDocument_inlayHint, event.buf) then
+          if client and client_supports_method(client, vim.lsp.protocol.Methods.textDocument_inlayHint) then
             map('<leader>th', function()
-              vim.lsp.inlay_hint.enable(not vim.lsp.inlay_hint.is_enabled { bufnr = event.buf })
+              vim.lsp.inlay_hint.enable(event.buf, true)
             end, '[T]oggle Inlay [H]ints')
           end
         end,
@@ -737,17 +816,28 @@ require('lazy').setup({
       --  - settings (table): Override the default settings passed when initializing the server.
       --        For example, to see the options for `lua_ls`, you could go to: https://luals.github.io/wiki/settings/
       local servers = {
-        -- clangd = {},
-        -- gopls = {},
-        -- pyright = {},
-        -- rust_analyzer = {},
+        bashls = {},
+        clangd = {},
+        gopls = {},
+        pyright = {
+          settings = {
+            python = {
+              analysis = {
+                autoSearchPaths = true,
+                useLibraryCodeForTypes = true,
+                diagnosticMode = 'workspace',
+              },
+            },
+          },
+        },
+        rust_analyzer = {},
         -- ... etc. See `:help lspconfig-all` for a list of all the pre-configured LSPs
         --
         -- Some languages (like typescript) have entire language plugins that can be useful:
         --    https://github.com/pmizio/typescript-tools.nvim
         --
         -- But for many setups, the LSP (`ts_ls`) will work just fine
-        -- ts_ls = {},
+        ts_ls = {},
         --
 
         lua_ls = {
@@ -786,8 +876,9 @@ require('lazy').setup({
       require('mason-tool-installer').setup { ensure_installed = ensure_installed }
 
       require('mason-lspconfig').setup {
-        ensure_installed = {}, -- explicitly set to an empty table (Kickstart populates installs via mason-tool-installer)
-        automatic_installation = false,
+        ensure_installed = { 'pyright', 'bashls' }, -- explicitly set to an empty table (Kickstart populates installs via mason-tool-installer)
+        --automatic_installation = true,
+
         handlers = {
           function(server_name)
             local server = servers[server_name] or {}
@@ -837,10 +928,10 @@ require('lazy').setup({
       formatters_by_ft = {
         lua = { 'stylua' },
         -- Conform can also run multiple formatters sequentially
-        -- python = { "isort", "black" },
+        python = { 'isort', 'black' },
         --
         -- You can use 'stop_after_first' to run the first available formatter from the list
-        -- javascript = { "prettierd", "prettier", stop_after_first = true },
+        javascript = { 'prettierd', 'prettier', stop_after_first = true },
       },
     },
   },
@@ -985,6 +1076,27 @@ require('lazy').setup({
     end,
   },
 
+  -- colorizer
+  {
+    'NvChad/nvim-colorizer.lua',
+    event = 'BufReadPre',
+    config = function()
+      require('colorizer').setup {
+        filetypes = {
+          '*',
+          '!lazy',
+        },
+        user_default_options = {
+          names = false, -- Don't highlight CSS color names like "blue"
+          RGB = true, -- Enable #RGB hex codes
+          RRGGBB = true, -- Enable #RRGGBB hex codes
+          tailwind = true, -- Enable Tailwind class highlighting
+          mode = 'background', -- Show color in background (can be "foreground" or "virtualtext")
+        },
+      }
+    end,
+  },
+
   -- Highlight todo, notes, etc in comments
   { 'folke/todo-comments.nvim', event = 'VimEnter', dependencies = { 'nvim-lua/plenary.nvim' }, opts = { signs = false } },
 
@@ -1031,7 +1143,23 @@ require('lazy').setup({
     main = 'nvim-treesitter.configs', -- Sets main module to use for opts
     -- [[ Configure Treesitter ]] See `:help nvim-treesitter`
     opts = {
-      ensure_installed = { 'bash', 'c', 'diff', 'html', 'lua', 'luadoc', 'markdown', 'markdown_inline', 'query', 'vim', 'vimdoc' },
+      ensure_installed = {
+        'bash',
+        'c',
+        'diff',
+        'html',
+        'lua',
+        'luadoc',
+        'markdown',
+        'markdown_inline',
+        'query',
+        'vim',
+        'vimdoc',
+        'python',
+        'go',
+        'javascript',
+        'typescript',
+      },
       -- Autoinstall languages that are not installed
       auto_install = true,
       highlight = {
