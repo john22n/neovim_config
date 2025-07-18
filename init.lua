@@ -380,10 +380,10 @@ require('lazy').setup({
           markdown = { "prettier" },
         },
       })
-      end
+    end
   },
 
-  { -- Useful plugin to show you pending keybinds.
+  {                     -- Useful plugin to show you pending keybinds.
     'folke/which-key.nvim',
     event = 'VimEnter', -- Sets the loading event to 'VimEnter'
     opts = {
@@ -429,7 +429,7 @@ require('lazy').setup({
 
       -- Document existing key chains
       spec = {
-        { '<leader>c', group = '[C]ode', mode = { 'n', 'x' } },
+        { '<leader>c', group = '[C]ode',     mode = { 'n', 'x' } },
         { '<leader>d', group = '[D]ocument' },
         { '<leader>r', group = '[R]ename' },
         { '<leader>s', group = '[S]earch' },
@@ -469,7 +469,7 @@ require('lazy').setup({
       { 'nvim-telescope/telescope-ui-select.nvim' },
 
       -- Useful for getting pretty icons, but requires a Nerd Font.
-      { 'nvim-tree/nvim-web-devicons', enabled = vim.g.have_nerd_font },
+      { 'nvim-tree/nvim-web-devicons',            enabled = vim.g.have_nerd_font },
     },
     config = function()
       -- Telescope is a fuzzy finder that comes with a lot of different things that
@@ -558,6 +558,7 @@ require('lazy').setup({
     -- used for completion, annotations and signatures of Neovim apis
     'folke/lazydev.nvim',
     ft = 'lua',
+    dependencies = { 'neovim/nvim-lspconfig' },
     opts = {
       library = {
         -- Load luvit types when the `vim.uv` word is found
@@ -572,7 +573,8 @@ require('lazy').setup({
       -- Automatically install LSPs and related tools to stdpath for Neovim
       -- Mason must be loaded before its dependents so we need to set it up here.
       -- NOTE: `opts = {}` is the same as calling `require('mason').setup({})`
-      { 'williamboman/mason.nvim',
+      {
+        'williamboman/mason.nvim',
         build = ":MasonUpdate",
         config = function()
           require("mason").setup()
@@ -580,6 +582,7 @@ require('lazy').setup({
       },
       {
         'williamboman/mason-lspconfig.nvim',
+        version = "*",
         dependencies = { "williamboman/mason.nvim" },
         config = function()
           local servers = {
@@ -611,24 +614,33 @@ require('lazy').setup({
           capabilities = vim.tbl_deep_extend('force', capabilities, require('cmp_nvim_lsp').default_capabilities())
 
           local ensure_installed = vim.tbl_keys(servers)
-          vim.list_extend(ensure_installed, { 'stylua' })
 
           require('mason-tool-installer').setup {
-            ensure_installed = ensure_installed,
+            ensure_installed = {
+              'stylua',         --  formatter
+              'prettierd',      --  formatter
+              'isort', 'black', --  python formatters
+              'pyright',        --  LSP
+              'tsserver',       --  LSP
+              'typescript-language-server',
+              'tailwindcss-language-server',
+              'eslint'
+            },
           }
 
           require('mason-lspconfig').setup {
+            automatic_enable = true,
             ensure_installed = ensure_installed,
           }
 
-          local lspconfig = require('lspconfig')
-          require('mason-lspconfig').setup_handlers {
-            function(server_name)
-              local opts = servers[server_name] or {}
-              opts.capabilities = vim.tbl_deep_extend('force', {}, capabilities, opts.capabilities or {})
-              lspconfig[server_name].setup(opts)
-            end,
-          }
+          -- local lspconfig = require('lspconfig')
+          --          require('mason-lspconfig').setup_handlers {
+          --            function(server_name)
+          --             local opts = servers[server_name] or {}
+          --             opts.capabilities = vim.tbl_deep_extend('force', {}, capabilities, opts.capabilities or {})
+          --             lspconfig[server_name].setup(opts)
+          --           end,
+          --         }
         end,
       },
       -- Other dependencies...
@@ -873,23 +885,8 @@ require('lazy').setup({
       vim.list_extend(ensure_installed, {
         'stylua', -- Used to format Lua code
       })
+
       require('mason-tool-installer').setup { ensure_installed = ensure_installed }
-
-      require('mason-lspconfig').setup {
-        ensure_installed = { 'pyright', 'bashls' }, -- explicitly set to an empty table (Kickstart populates installs via mason-tool-installer)
-        --automatic_installation = true,
-
-        handlers = {
-          function(server_name)
-            local server = servers[server_name] or {}
-            -- This handles overriding only values explicitly passed
-            -- by the server configuration above. Useful when disabling
-            -- certain features of an LSP (for example, turning off formatting for ts_ls)
-            server.capabilities = vim.tbl_deep_extend('force', {}, capabilities, server.capabilities or {})
-            require('lspconfig')[server_name].setup(server)
-          end,
-        },
-      }
     end,
   },
 
@@ -1087,10 +1084,10 @@ require('lazy').setup({
           '!lazy',
         },
         user_default_options = {
-          names = false, -- Don't highlight CSS color names like "blue"
-          RGB = true, -- Enable #RGB hex codes
-          RRGGBB = true, -- Enable #RRGGBB hex codes
-          tailwind = true, -- Enable Tailwind class highlighting
+          names = false,       -- Don't highlight CSS color names like "blue"
+          RGB = true,          -- Enable #RGB hex codes
+          RRGGBB = true,       -- Enable #RRGGBB hex codes
+          tailwind = true,     -- Enable Tailwind class highlighting
           mode = 'background', -- Show color in background (can be "foreground" or "virtualtext")
         },
       }
